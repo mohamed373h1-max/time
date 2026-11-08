@@ -1,0 +1,222 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAppOwner() {
+      return isSignedIn() &&
+             request.auth.token.email == 'mohamed373h1@gmail.com' &&
+             request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // User Profile
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             (!('totalStudyMinutes' in data) || data.totalStudyMinutes is int) &&
+             (!('tasksCompleted' in data) || data.tasksCompleted is int);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAppOwner();
+      allow list: if isAppOwner();
+
+      allow create: if isOwner(userId) &&
+                       incoming().userId == userId &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming());
+
+      allow delete: if isOwner(userId);
+
+      // Tasks
+      match /tasks/{taskId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(taskId) &&
+                         incoming().userId == userId &&
+                         incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+                         (!('subject' in incoming()) || (incoming().subject is string && incoming().subject.size() <= 100)) &&
+                         (!('priority' in incoming()) || incoming().priority in ['low', 'medium', 'high']) &&
+                         incoming().isCompleted is bool &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(taskId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+                         incoming().isCompleted is bool;
+
+        allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+
+      // Notes
+      match /notes/{noteId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         incoming().userId == userId &&
+                         incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+                         incoming().content is string && incoming().content.size() <= 50000 &&
+                         (!('subject' in incoming()) || (incoming().subject is string && incoming().subject.size() <= 100)) &&
+                         (!('isPinned' in incoming()) || incoming().isPinned is bool) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+                         incoming().content is string && incoming().content.size() <= 50000;
+
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+
+      // Schedule Days
+      match /schedule/{dayId} {
+        allow get, list: if isOwner(userId);
+
+        allow create, update: if isOwner(userId) &&
+                                 incoming().dayId is string && incoming().dayId.size() <= 30 &&
+                                 incoming().dayName is string && incoming().dayName.size() <= 50 &&
+                                 incoming().periodsJson is string && incoming().periodsJson.size() <= 10000;
+
+        allow delete: if isOwner(userId);
+      }
+
+      // Khatma Progress
+      match /khatma/{khatmaId} {
+        allow get, list: if isOwner(userId);
+
+        allow create, update: if isOwner(userId) &&
+                                 incoming().userId == userId &&
+                                 incoming().currentPage is int && incoming().currentPage >= 1 && incoming().currentPage <= 604 &&
+                                 incoming().currentJuz is int && incoming().currentJuz >= 1 && incoming().currentJuz <= 30 &&
+                                 (!('dailyPagesTarget' in incoming()) || incoming().dailyPagesTarget is int) &&
+                                 (!('pagesReadToday' in incoming()) || incoming().pagesReadToday is int) &&
+                                 (!('completedCount' in incoming()) || incoming().completedCount is int);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // Dictionary Favorites
+      match /dictionary_favorites/{entryId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+                                 isValidId(entryId) &&
+                                 incoming().userId == userId &&
+                                 incoming().wordEn is string && incoming().wordEn.size() <= 150 &&
+                                 incoming().wordAr is string && incoming().wordAr.size() <= 150 &&
+                                 incoming().definitionAr is string && incoming().definitionAr.size() <= 2000;
+        allow delete: if isOwner(userId);
+      }
+
+      // 3rd Secondary Quiz Results
+      match /quiz_results/{quizId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(quizId) &&
+                         incoming().userId == userId &&
+                         incoming().subject is string && incoming().subject.size() <= 100 &&
+                         incoming().totalQuestions is int &&
+                         incoming().correctAnswers is int &&
+                         incoming().scorePercentage is number &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+        allow delete: if isOwner(userId);
+      }
+
+      // Weekly Performance Evaluations
+      match /weekly_evaluations/{evalId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+                                 isValidId(evalId) &&
+                                 incoming().userId == userId &&
+                                 incoming().weekIdentifier is string && incoming().weekIdentifier.size() <= 60 &&
+                                 incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Community Broadcast Channel
+    match /channel_posts/{postId} {
+      allow get, list: if isSignedIn();
+
+      allow create: if isAppOwner() &&
+                       isValidId(postId) &&
+                       incoming().authorEmail == request.auth.token.email &&
+                       incoming().title is string && incoming().title.size() > 0 && incoming().title.size() <= 200 &&
+                       incoming().content is string && incoming().content.size() <= 10000 &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+      allow update: if isAppOwner() || (
+                       isSignedIn() &&
+                       incoming().authorEmail == existing().authorEmail &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'commentsCount'])
+                    );
+
+      allow delete: if isAppOwner();
+
+      // Post Comments
+      match /comments/{commentId} {
+        allow get, list: if isSignedIn();
+
+        allow create: if isSignedIn() &&
+                         isValidId(commentId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().userName is string && incoming().userName.size() <= 100 &&
+                         incoming().text is string && incoming().text.size() > 0 && incoming().text.size() <= 2000 &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+        allow update, delete: if isSignedIn() && (existing().userId == request.auth.uid || isAppOwner());
+      }
+
+      // Post Reactions
+      match /reactions/{reactionId} {
+        allow get, list: if isSignedIn();
+
+        allow create, update: if isSignedIn() &&
+                                 isValidId(reactionId) &&
+                                 incoming().userId == request.auth.uid &&
+                                 incoming().reactionType is string && incoming().reactionType.size() <= 30 &&
+                                 incoming().createdAt is timestamp && incoming().createdAt <= request.time;
+
+        allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAppOwner());
+      }
+    }
+  }
+}

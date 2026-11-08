@@ -1,0 +1,158 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "totalStudyMinutes": { "type": "integer" },
+        "tasksCompleted": { "type": "integer" }
+      },
+      "required": ["userId", "email", "displayName", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Student daily study task",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "isCompleted", "createdAt"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "Student subject note",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "subject": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "content", "createdAt"]
+    },
+    "ScheduleDay": {
+      "title": "ScheduleDay",
+      "description": "Weekly schedule periods for a day",
+      "type": "object",
+      "properties": {
+        "dayId": { "type": "string" },
+        "dayName": { "type": "string" },
+        "periodsJson": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["dayId", "dayName", "periodsJson"]
+    },
+    "KhatmaProgress": {
+      "title": "KhatmaProgress",
+      "description": "Quran Khatma tracking progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "currentPage": { "type": "integer" },
+        "currentJuz": { "type": "integer" },
+        "dailyPagesTarget": { "type": "integer" },
+        "pagesReadToday": { "type": "integer" },
+        "lastReadDate": { "type": "string" },
+        "completedCount": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "currentPage", "currentJuz"]
+    },
+    "ChannelPost": {
+      "title": "ChannelPost",
+      "description": "Official broadcast post from the app owner",
+      "type": "object",
+      "properties": {
+        "authorEmail": { "type": "string" },
+        "authorName": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["text", "image", "file"] },
+        "mediaUrl": { "type": "string" },
+        "fileName": { "type": "string" },
+        "likesCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorEmail", "title", "content", "createdAt"]
+    },
+    "ChannelComment": {
+      "title": "ChannelComment",
+      "description": "User comment on channel broadcast post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "userName", "text", "createdAt"]
+    },
+    "ChannelReaction": {
+      "title": "ChannelReaction",
+      "description": "User emoji reaction on channel broadcast post",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "reactionType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId", "reactionType", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "User tasks"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User notes"
+    },
+    "/users/{userId}/schedule/{dayId}": {
+      "schema": "ScheduleDay",
+      "description": "Weekly timetable"
+    },
+    "/users/{userId}/khatma/{khatmaId}": {
+      "schema": "KhatmaProgress",
+      "description": "Quran Khatma tracking"
+    },
+    "/channel_posts/{postId}": {
+      "schema": "ChannelPost",
+      "description": "Owner broadcast posts"
+    },
+    "/channel_posts/{postId}/comments/{commentId}": {
+      "schema": "ChannelComment",
+      "description": "Comments on channel posts"
+    },
+    "/channel_posts/{postId}/reactions/{reactionId}": {
+      "schema": "ChannelReaction",
+      "description": "Reactions to channel posts"
+    }
+  }
+}
